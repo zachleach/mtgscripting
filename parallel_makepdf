@@ -57,6 +57,63 @@ def create_single_page_pdf(page_data):
     return output_pdf
 
 
+def create_single_page_pdf_crosshair(page_data):
+    page_number, image_paths = page_data
+    output_dir = 'output'
+    output_pdf = os.path.join(output_dir, f'deck_page_{page_number}.pdf')
+    
+    c = canvas.Canvas(output_pdf, pagesize=letter)
+    page_width, page_height = letter
+    
+    pixel_gap = 1  # Increased to 2 pixels
+    crosshair_length = 50
+    
+    grid_width = (1490 * 3) + (pixel_gap * 2)
+    grid_height = (2080 * 3) + (pixel_gap * 2)
+    
+    size_multiplier = 0.95
+    scale = min(page_width * size_multiplier / grid_width, page_height * size_multiplier / grid_height)
+    
+    cell_width = 1490 * scale
+    cell_height = 2080 * scale
+    
+    margin_x = (page_width - (cell_width * 3 + pixel_gap * 2)) / 2
+    margin_y = (page_height - (cell_height * 3 + pixel_gap * 2)) / 2
+    
+    # Draw crosshairs
+    c.setStrokeColorRGB(0.9, 0.9, 0.9)
+    c.setLineWidth(1)  # Increased line thickness
+    
+    # Calculate gap positions
+    for row in range(4):
+        for col in range(4):
+            # Calculate exact intersection points
+            x = margin_x + col * cell_width + max(0, col - 1) * pixel_gap + (pixel_gap / 2)  # Added pixel_gap/2
+            y = margin_y + row * cell_height + max(0, row - 1) * pixel_gap + (pixel_gap / 2)  # Added pixel_gap/2
+            
+            # Draw crosshair
+            c.line(x - crosshair_length, y, x + crosshair_length, y)
+            c.line(x, y - crosshair_length, x, y + crosshair_length)
+    
+    # Draw card images
+    for row in range(3):
+        for col in range(3):
+            img_index = row * 3 + col
+            if img_index >= len(image_paths) or image_paths[img_index] is None:
+                continue
+                
+            x = margin_x + col * (cell_width + pixel_gap)
+            y = margin_y + (2 - row) * (cell_height + pixel_gap)
+            
+            c.drawImage(image_paths[img_index], x, y, cell_width, cell_height)
+    
+    c.save()
+    return output_pdf
+
+
+
+
+
 
 def create_parallel_pdfs(image_dir):
     images = sorted(glob.glob(os.path.join(image_dir, "*.png")))
@@ -99,6 +156,8 @@ def merge_pdfs_into_four(pdf_files):
             writer.write(output_file)
         writer.close()
 
+
+
 def test_single_page(image_dir):
     import glob
     import os
@@ -117,10 +176,14 @@ def test_single_page(image_dir):
     page_data = (0, test_images)
     
     # Call the function
-    output_path = create_single_page_pdf(page_data)
+    output_path = create_single_page_pdf_crosshair(page_data)
     print(f"Found {len(images)} images total")
     print(f"Using {len([x for x in test_images if x is not None])} images for test")
     print(f"PDF created at: {output_path}")
+
+
+
+
 
 if __name__ == '__main__':
     import sys
