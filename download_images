@@ -1,0 +1,37 @@
+#!/bin/python3
+
+# 2024.11.03, by @zachleach
+
+import time
+import sys
+import json
+import requests
+import os
+
+infile = sys.argv[1] if len(sys.argv) > 1 else None
+
+# Load JSON
+with open(infile, 'r', encoding='utf-8') as f:
+    data = json.load(f)
+
+# Create directory for images
+os.makedirs('output', exist_ok=True)
+
+# Download each card's PNG
+for card in data:
+    if 'image_uris' in card and 'png' in card['image_uris']:
+        png_url = card['image_uris']['png']
+        filename = f"output/{card['set']}_{card['collector_number']}_{card['name'].replace('/', '_').replace(' ', '_')}.png"
+
+        print(f"Downloading {card['name']}")
+        response = requests.get(png_url)
+        if response.status_code == 200:
+            with open(filename, 'wb') as f:
+                f.write(response.content)
+    
+        time.sleep(0.1)
+
+'''
+todo
+save cards into directories by rarity
+'''

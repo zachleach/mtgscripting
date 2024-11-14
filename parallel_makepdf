@@ -1,0 +1,110 @@
+#!/bin/python3
+
+# 2024.11.12, by @zachleach
+from PIL import Image
+import os
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+import glob
+from concurrent.futures import ProcessPoolExecutor
+import multiprocessing
+from functools import lru_cache
+
+output_dir = 'output'
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
+# Known aspect ratio for 1490x2080 images
+aspect = 1490/2080
+
+def create_single_page_pdf(page_data):
+    page_number, image_paths = page_data
+    output_dir = 'output'
+    output_pdf = os.path.join(output_dir, f'deck_page_{page_number}.pdf')
+    
+    c = canvas.Canvas(output_pdf, pagesize=A4)
+    width, height = A4
+    
+    pixel_gap = 1
+    margin = pixel_gap * 6
+    usable_height = height - 2 * margin
+    cell_width = (width - 2 * pixel_gap) / 3
+    cell_height = (usable_height - 2 * pixel_gap) / 3
+    
+    
+    positions = [
+        (0, margin + 2*cell_height + 2*pixel_gap), 
+        (cell_width + pixel_gap, margin + 2*cell_height + 2*pixel_gap), 
+        (2*cell_width + 2*pixel_gap, margin + 2*cell_height + 2*pixel_gap),
+        (0, margin + cell_height + pixel_gap), 
+        (cell_width + pixel_gap, margin + cell_height + pixel_gap), 
+        (2*cell_width + 2*pixel_gap, margin + cell_height + pixel_gap),
+        (0, margin), 
+        (cell_width + pixel_gap, margin), 
+        (2*cell_width + 2*pixel_gap, margin)
+    ]
+    
+    draw_width = cell_width
+    draw_height = draw_width / aspect
+    if draw_height > cell_height:
+        draw_height = cell_height
+        draw_width = draw_height * aspect
+    
+    for img_path, (x, y) in zip(image_paths, positions):
+        if img_path is None:
+            continue
+        
+        x_offset = x + (cell_width - draw_width) / 2
+        y_offset = y + (cell_height - draw_height) / 2
+        c.drawImage(img_path, x_offset, y_offset, draw_width, draw_height)
+    
+    c.save()
+    return output_pdf
+
+def create_parallel_pdfs(image_dir):
+    images = sorted(glob.glob(os.path.join(image_dir, "*.png")))
+    worker_count = max(1, multiprocessing.cpu_count() - 1)
+    
+    # Group images directly into pages of 9
+    page_data = [(i//9, images[i:i+9]) for i in range(0, len(images), 9)]
+    
+    with ProcessPoolExecutor(max_workers=worker_count) as executor:
+        pdf_files = list(executor.map(create_single_page_pdf, page_data))
+    
+    return pdf_files
+
+
+
+
+
+from pypdf import PdfWriter
+import math
+
+def merge_pdfs_into_four(pdf_files):
+    total_pages = len(pdf_files)
+    base_size = math.ceil(total_pages / 4)
+    
+    # Calculate sizes for each output PDF
+    sizes = [base_size] * 3
+    sizes.append(total_pages - sum(sizes))
+    
+    current_index = 0
+    for i, size in enumerate(sizes):
+        writer = PdfWriter()
+        
+        # Add pages to current writer
+        for j in range(size):
+            if current_index < len(pdf_files):
+                writer.append(pdf_files[current_index])
+                current_index += 1
+        
+        # Write merged PDF and close the file
+        with open(f'{output_dir}/combined_part_{i+1}.pdf', 'wb') as output_file:
+            writer.write(output_file)
+        writer.close()
+
+if __name__ == '__main__':
+    import sys
+    src = 'input' if len(sys.argv) < 2 else sys.argv[1]
+    pdf_files = create_parallel_pdfs(f'{src}')
+    merge_pdfs_into_four(pdf_files)
