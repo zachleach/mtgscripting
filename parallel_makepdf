@@ -24,42 +24,39 @@ def create_single_page_pdf(page_data):
     output_pdf = os.path.join(output_dir, f'deck_page_{page_number}.pdf')
     
     c = canvas.Canvas(output_pdf, pagesize=letter)
-    width, height = letter
+    page_width, page_height = letter
     
     pixel_gap = 1
-    margin = pixel_gap * 6
-    usable_height = height - 2 * margin
-    cell_width = (width - 2 * pixel_gap) / 3
-    cell_height = (usable_height - 2 * pixel_gap) / 3
     
-    positions = [
-        (0, margin + 2*cell_height + 2*pixel_gap), 
-        (cell_width + pixel_gap, margin + 2*cell_height + 2*pixel_gap), 
-        (2*cell_width + 2*pixel_gap, margin + 2*cell_height + 2*pixel_gap),
-        (0, margin + cell_height + pixel_gap), 
-        (cell_width + pixel_gap, margin + cell_height + pixel_gap), 
-        (2*cell_width + 2*pixel_gap, margin + cell_height + pixel_gap),
-        (0, margin), 
-        (cell_width + pixel_gap, margin), 
-        (2*cell_width + 2*pixel_gap, margin)
-    ]
+    # Calculate total grid size
+    grid_width = (1490 * 3) + (pixel_gap * 2)  # 3 cards wide plus gaps
+    grid_height = (2080 * 3) + (pixel_gap * 2)  # 3 cards tall plus gaps
     
-    draw_width = cell_width
-    draw_height = draw_width / aspect
-    if draw_height > cell_height:
-        draw_height = cell_height
-        draw_width = draw_height * aspect
+    # Scale grid to fit page while maintaining aspect ratio
+    scale = min(page_width * 0.9 / grid_width, page_height * 0.9 / grid_height)
     
-    for img_path, (x, y) in zip(image_paths, positions):
-        if img_path is None:
-            continue
-        
-        x_offset = x + (cell_width - draw_width) / 2
-        y_offset = y + (cell_height - draw_height) / 2
-        c.drawImage(img_path, x_offset, y_offset, draw_width, draw_height)
+    cell_width = 1490 * scale
+    cell_height = 2080 * scale
+    
+    # Calculate margins to center the grid
+    margin_x = (page_width - (cell_width * 3 + pixel_gap * 2)) / 2
+    margin_y = (page_height - (cell_height * 3 + pixel_gap * 2)) / 2
+    
+    for row in range(3):
+        for col in range(3):
+            img_index = row * 3 + col
+            if img_index >= len(image_paths) or image_paths[img_index] is None:
+                continue
+                
+            x = margin_x + col * (cell_width + pixel_gap)
+            y = margin_y + (2 - row) * (cell_height + pixel_gap)
+            
+            c.drawImage(image_paths[img_index], x, y, cell_width, cell_height)
     
     c.save()
     return output_pdf
+
+
 
 def create_parallel_pdfs(image_dir):
     images = sorted(glob.glob(os.path.join(image_dir, "*.png")))
