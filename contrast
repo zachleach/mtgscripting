@@ -1,0 +1,19 @@
+#!/bin/python3
+
+# 2024.11.14, by @zachleach
+
+from PIL import Image, ImageEnhance
+
+# Open the image
+image = Image.open('input.png')
+
+# Enhance sharpness
+sharpener = ImageEnhance.Sharpness(image)
+sharpened_image = sharpener.enhance(1.2)  # Value > 1 increases sharpness
+
+# Enhance contrast
+contraster = ImageEnhance.Contrast(sharpened_image)
+final_image = contraster.enhance(1.2)  # Value > 1 increases contrast
+
+# Save the result
+final_image.save('output.png')

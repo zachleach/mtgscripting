@@ -7,7 +7,6 @@ import sys
 import json
 import requests
 import os
-
 infile = sys.argv[1] if len(sys.argv) > 1 else None
 
 # Load JSON
@@ -19,19 +18,32 @@ os.makedirs('output', exist_ok=True)
 
 # Download each card's PNG
 for card in data:
-    if 'image_uris' in card and 'png' in card['image_uris']:
-        png_url = card['image_uris']['png']
-        filename = f"output/{card['set']}_{card['collector_number']}_{card['name'].replace('/', '_').replace(' ', '_')}.png"
-
-        print(f"Downloading {card['name']}")
-        response = requests.get(png_url)
-        if response.status_code == 200:
-            with open(filename, 'wb') as f:
-                f.write(response.content)
+    base_filename = f"output/{card['set']}_{card['collector_number']}_{card['name'].replace('/', '_').replace(' ', '_')}"
     
+    if 'card_faces' in card:
+        # Front face
+        if 'image_uris' in card['card_faces'][0]:
+            print(f"Downloading {card['card_faces'][0]['name']}")
+            response = requests.get(card['card_faces'][0]['image_uris']['png'])
+            if response.status_code == 200:
+                with open(f"{base_filename}_front.png", 'wb') as f:
+                    f.write(response.content)
+        
+        # Back face
+        if 'image_uris' in card['card_faces'][1]:
+            print(f"Downloading {card['card_faces'][1]['name']}")
+            response = requests.get(card['card_faces'][1]['image_uris']['png'])
+            if response.status_code == 200:
+                with open(f"{base_filename}_back.png", 'wb') as f:
+                    f.write(response.content)
+        
         time.sleep(0.1)
-
-'''
-todo
-save cards into directories by rarity
-'''
+    
+    elif 'image_uris' in card:
+        print(f"Downloading {card['name']}")
+        response = requests.get(card['image_uris']['png'])
+        if response.status_code == 200:
+            with open(f"{base_filename}.png", 'wb') as f:
+                f.write(response.content)
+        
+        time.sleep(0.1)
