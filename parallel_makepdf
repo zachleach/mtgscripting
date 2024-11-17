@@ -17,9 +17,6 @@ output_dir = f'{output_dir}_pdfs'
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
-print(output_dir)
-
-exit(1)
 # Known aspect ratio for 1490x2080 images
 aspect = 1490/2080
 
